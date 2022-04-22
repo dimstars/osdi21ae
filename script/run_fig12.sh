@@ -13,7 +13,7 @@ echo "start 3-phase switch"
 file_name=Fig12_3_phase
 rm -rf throughput.txt 
 
-./masstree_nap /mnt/pm0/ycsb ../dataset/load ../dataset/1-dy-1read50-zipfan99-space192 70 > output
+./masstree_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/1-dy-1read50-zipfan99-space192 70 > output
 
 mv throughput.txt  ${file_name}
 
@@ -28,6 +28,6 @@ echo "start global-lock switch"
 file_name=Fig12_global_lock
 rm -rf throughput.txt 
 
-./masstree_nap /mnt/pm0/ycsb ../dataset/load ../dataset/1-dy-1read50-zipfan99-space192 70 > output
+./masstree_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/1-dy-1read50-zipfan99-space192 70 > output
 
 mv throughput.txt  ${file_name}

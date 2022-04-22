@@ -1,20 +1,115 @@
-#include "bench.h"
+#include "../bench/bench.h"
+#include "single_pmdk.h"
+#include "single_btree.h"
+
+#ifdef ENABLE_NAP
+#undef ENABLE_NAP
+#endif
+
+#define LOGPATH "/log_persistent"
+#define PATH "/ycsb"
+#define NODEPATH "/persistent"
+#define VALUEPATH "/data"
+
+const uint64_t NVM_NODE_SIZE = 20 * (1ULL << 30);
+const uint64_t NVM_LOG_SIZE = 30 * (1ULL << 30);
+const uint64_t NVM_VALUE_SIZE = 30 * (1ULL << 30);
+
+char max_str[15] = {(int8_t)255, (int8_t)255, (int8_t)255, (int8_t)255,
+                    (int8_t)255,
+                    (int8_t)255, (int8_t)255, (int8_t)255, (int8_t)255,
+                    (int8_t)255,
+                    (int8_t)255, (int8_t)255, (int8_t)255, (int8_t)255,
+                    (int8_t)255};
 
 namespace {
 
-struct MassTreeIndex {
-  masstree::masstree *map;
+class NFTree {
+public:
+    NFTree(): tree_(nullptr) {
+      AllocatorInit(LOGPATH, NVM_LOG_SIZE, VALUEPATH, NVM_VALUE_SIZE, NODEPATH, NVM_NODE_SIZE);
+    }
 
-  MassTreeIndex(masstree::masstree *map) : map(map) {}
+    NFTree(btree *tree): tree_(tree) {}
+    virtual ~NFTree() {
+      mybt->exitBtree();
+      AllocatorExit();
+    }
+
+    void Init()
+    {
+      mybt = MyBtree::getInitial(PATH);
+      tree_ = mybt->getBt();
+    }
+
+    void Info()
+    {
+      mybt->clearHeat();
+    }
+
+    void Close() { 
+      mybt->closeChange();
+    }
+    int Put(uint64_t key, uint64_t value) 
+    {
+        tree_->btreeInsert(key, (char *)value);
+        return 1;
+    }
+    int Get(uint64_t key, uint64_t &value)
+    {
+        value = (uint64_t)tree_->btreeSearch(key);
+        return 1;
+    }
+    int Update(uint64_t key, uint64_t value) {
+        //tree_->btreeDelete(key);
+        tree_->btreeUpdate(key, (char *)value);
+        return 1;
+    }
+    int Scan(uint64_t start_key, int len, std::vector<std::pair<uint64_t, uint64_t>>& results) 
+    {
+        tree_->btreeSearchRange(start_key, UINT64_MAX, results, len);
+        return 1;
+    }
+
+    btree *get_btree() {
+      return tree_;
+    }
+
+private:
+    btree *tree_;
+    MyBtree *mybt;
+};
+
+uint64_t sting_to_uint64(const nap::Slice &key) {
+  uint64_t k = 0;
+  for (int i = 8; i >= 0 ; --i) {
+    k = k * 100 + key.data()[i] % 100;
+  }
+  return k;
+}
+
+uint64_t sting_to_uint64(uint8_t key[]) {
+  uint64_t k = 0;
+  for (int i = 8; i >= 0 ; --i) {
+    k = k * 256 + key[i];
+  }
+  return k;
+}
+
+struct NFTreeIndex {
+  btree *map;
+
+  NFTreeIndex(btree *map) : map(map) {}
 
   void put(const nap::Slice &key, const nap::Slice &value, bool is_update) {
-    auto t = map->getThreadInfo();
-    map->put(key.data(), cur_value++, t);
+    uint64_t k = sting_to_uint64(key);
+    map->btreeInsert(k, (char *)(cur_value++));
   }
 
   bool get(const nap::Slice &key, std::string &value) {
-    auto t = map->getThreadInfo();
-    auto ret = map->get(key.data(), t);
+    uint64_t k = sting_to_uint64(key);
+    uint64_t *ret =
+        reinterpret_cast<uint64_t *>(map->btreeSearch(k));
     return ret != nullptr;
   }
 
@@ -67,7 +162,9 @@ int main(int argc, char *argv[]) {
 
   init_numa_pool();
 
-  auto tree = new masstree::masstree();
+  NFTree *nftree = new NFTree();
+  nftree->Init();
+  btree *tree = nftree->get_btree();
 
   printf("initialization done.\n");
 
@@ -93,8 +190,8 @@ int main(int argc, char *argv[]) {
       //   printf("%d\n", strlen((char *)key));
       // assert(strlen((char *)key) == 14);
 
-      auto t = tree->getThreadInfo();
-      tree->put((char *)key, cur_value++, t);
+      uint64_t k = sting_to_uint64(key);
+      tree->btreeInsert(k, (char *)(cur_value++));
       loaded++;
 
       next_thread_id_for_load(thread_num);
@@ -113,11 +210,6 @@ int main(int argc, char *argv[]) {
   double *latency_queue[thread_num];
   int move[thread_num];
   for (size_t t = 0; t < thread_num; t++) {
-#ifdef ENABLE_NAP
-    bindCore(t + 1);
-#else
-    bindCore(t);
-#endif
     run_queue[t] = new thread_queue[READ_WRITE_NUM / thread_num + 1];
     latency_queue[t] =
         (double *)calloc(READ_WRITE_NUM / thread_num + 1, sizeof(double));
@@ -171,21 +263,21 @@ int main(int argc, char *argv[]) {
     THREADS[t].latency_queue = latency_queue[t];
   }
 
+#ifdef LATENCY_ENABLE
+  struct timespec stop;
+#endif
+
   std::vector<std::thread> threads;
   threads.reserve(thread_num);
 
 #ifdef ENABLE_NAP
-  MassTreeIndex raw_index(tree);
-  nap::Nap<MassTreeIndex> masstree_nap(&raw_index);
-#endif
-
-#ifdef SWITCH_TEST
-  masstree_nap.set_switch_interval(0.2);
+  NFTreeIndex raw_index(tree);
+  nap::Nap<NFTreeIndex> nftree_nap(&raw_index);
 #endif
 
   // warm up
   {
-    const std::string warm_up(WARMUP_FILE);
+    const std::string warm_up("/home/ljr/Nap/dataset/load4");
     if ((ycsb = fopen(warm_up.c_str(), "r")) == nullptr) {
       printf("failed to read %s\n", warm_up.c_str());
       exit(1);
@@ -197,22 +289,17 @@ int main(int argc, char *argv[]) {
 
 #ifdef ENABLE_NAP
         std::string str;
-        masstree_nap.get(nap::Slice((char *)key, KEY_LEN), str);
+        nftree_nap.get(nap::Slice((char *)key, KEY_LEN), str);
 #endif
       }
     }
 #ifdef ENABLE_NAP
     nap::Topology::reset();
 
-    masstree_nap.set_sampling_interval(32);
+    nftree_nap.set_sampling_interval(32);
 #endif
     fclose(ycsb);
   }
-
-
-#ifdef SWITCH_TEST
-  latency_evaluation_t latency(thread_num);
-#endif
 
   constexpr int kTestThread = nap::kMaxThreadCnt;
   struct timespec start[kTestThread], end[kTestThread];
@@ -220,42 +307,13 @@ int main(int argc, char *argv[]) {
   memset(is_test, false, sizeof(is_test));
 
   std::atomic<uint64_t> th_counter{0};
-  // sleep(1);
-  //   int test_sleep[100];
-  //   int now_sleep;
-  // #ifdef ENABLE_NAP
-  //   test_sleep[12] = 15;
-  //   test_sleep[30] = 9;
-  //   test_sleep[48] = 6;
-  //   test_sleep[70] = 6;
-  //   now_sleep = test_sleep[thread_num];
-  // #else
-  // //   test_sleep[12] = 19;
-  //   test_sleep[30] = 11;
-  //   test_sleep[48] = 9;
-  //   test_sleep[71] = 8;
-  //   now_sleep = test_sleep[thread_num];
-  // #endif
-  // nap::Timer pcm_time;
-  // pcm_time.begin();
-  // system(("/home/ljr/pcm/pcm-numa.x " + std::to_string(now_sleep) +
-  //         " >> /home/ljr/Nap/build/pcm_out" + std::to_string(thread_num) +
-  //         " 2>&1 &")
-  //            .c_str());
-  // // system(("/home/ljr/pcm/pcm.x " + std::to_string(now_sleep) +
-  // //         " >> /home/ljr/Nap/build/pcm_out_" + std::to_string(thread_num) +
-  // //         " 2>&1 &")
-  // //            .c_str());
   for (size_t i = 0; i < thread_num; i++) {
     threads.emplace_back(
         [&](size_t thread_id) {
           my_thread_id = nap::Topology::threadID();
-          // printf("Thread %d is opened\n", my_thread_id);
+          printf("Thread %d is opened\n", my_thread_id);
           bindCore(my_thread_id);
 
-#ifdef SWITCH_TEST
-          latency.init_thread(my_thread_id);
-#endif
           constexpr int kBenchLoop = 1;
           for (int k = 0; k < kBenchLoop; ++k) {
             if (k == kBenchLoop - 1) { // enter into benchmark
@@ -265,7 +323,7 @@ int main(int argc, char *argv[]) {
               }
 
 #ifdef ENABLE_NAP
-              masstree_nap.clear();
+              nftree_nap.clear();
 #endif
               clock_gettime(CLOCK_MONOTONIC, start + my_thread_id);
               is_test[my_thread_id] = true;
@@ -276,43 +334,67 @@ int main(int argc, char *argv[]) {
               if (op.operation == cceh_op::INSERT) {
 
 #ifdef ENABLE_NAP
-                masstree_nap.put(nap::Slice((char *)op.key, KEY_LEN),
+                nftree_nap.put(nap::Slice((char *)op.key, KEY_LEN),
                                  nap::Slice((char *)op.key, 8), false);
 #else
-                auto t = tree->getThreadInfo();
-                tree->put((char *)op.key, cur_value++, t);
+                uint64_t k = sting_to_uint64(op.key);
+                tree->btreeInsert(k, (char *)(cur_value++));
 
 #endif
 
               } else if (op.operation == cceh_op::READ) {
 
 #ifdef RANGE_BENCH
+
 #ifdef ENABLE_NAP
 
                 thread_local static char buf_2[4096];
-                masstree_nap.internal_query( // scan NAL
+                nftree_nap.internal_query(
                     (nap::Slice((char *)op.key, KEY_LEN)), 10, (char *)buf_2);
 
-                auto t = tree->getThreadInfo(); // scan Raw Indexes
-                tree->scan((char *)op.key, 10, (uint64_t *)thread_local_buffer,
-                           t);
+                int off = 0;
+                tree->btree_search_range((char *)op.key, max_str,
+                                         (unsigned long *)thread_local_buffer,
+                                         100, off);
+
+            // for (int i = 0; i < 10; ++i) {
+            //   strncmp(buf_2 + i * KEY_LEN,
+            //   (char *)thread_local_buffer + i * KEY_LEN, KEY_LEN);
+            // }
 
 #else
-                auto t = tree->getThreadInfo();
-                tree->scan((char *)op.key, 10, (uint64_t *)thread_local_buffer,
-                           t);
+                int off = 0;
+                uint64_t k = sting_to_uint64(op.key);
+                std::vector<std::pair<uint64_t, uint64_t>> results;
+                results.clear();
+                nftree->Scan(k, 100, results);
+                if (!results.empty() && results.size() >= 99) {
+                  THREADS[thread_id].found ++;
+                } else {
+                  THREADS[thread_id].unfound ++;
+                }
 
 #endif
-
 #else
 
 #ifdef ENABLE_NAP
                 std::string str;
-                masstree_nap.get(nap::Slice((char *)op.key, KEY_LEN), str);
-#else
-                auto t = tree->getThreadInfo();
+                if (nftree_nap.get(nap::Slice((char *)op.key, KEY_LEN), str)) {
+                  THREADS[thread_id].found ++;
+                } else {
+                  THREADS[thread_id].unfound ++;
+                }
 
-                tree->get((char *)op.key, t);
+#else
+                // printf("XXX %d\n",
+                //        strlen((char *)THREADS[thread_id].run_queue[j].key));
+                uint64_t k = sting_to_uint64(op.key);
+                if (tree->btreeSearch(k)) {
+                  THREADS[thread_id].found ++;
+                } else {
+                  THREADS[thread_id].unfound ++;
+                  //printf("not found key: %s , num: %lu\n", op.key, k);
+                }
 #endif
 
 #endif
@@ -320,24 +402,19 @@ int main(int argc, char *argv[]) {
 
               else {
                 printf("unknown op\n");
-                assert(false);
                 exit(1);
               }
-#ifdef SWITCH_TEST
-              latency.count(my_thread_id);
-#endif
             }
           }
           clock_gettime(CLOCK_MONOTONIC, end + my_thread_id);
 
-          
 #if defined(RECOVERY_TEST) && defined(ENABLE_NAP)
 
           if (thread_id == 0) {
             nap::Timer s;
             s.sleep(1000ull * 1000 * 5);
             s.begin();
-            masstree_nap.recovery();
+            nftree_nap.recovery();
             uint64_t rt = s.end();
             printf("recovery time: %ld ms\n", rt / 1000 /1000);
           }
@@ -346,26 +423,14 @@ int main(int argc, char *argv[]) {
         i);
   }
 
-#ifdef SWITCH_TEST
-  bindCore(71);
-  latency.throughput_listen_ms(20);
-#endif
-
   for (auto &t : threads) {
     t.join();
   }
-  // uint64_t real_time = pcm_time.end();
-  // if (real_time > 1000000000.0 * now_sleep) {
-  //   puts("!!!!!!!!!!!!!!!!!!!!!!!!!re - TEST !!!!!");
-  // }
-  // sleep(now_sleep * 2 + 2);
-  // system("pkill pcm-numa.x");
-  // system("pkill pcm.x");
 
   // printf("update time: %ld\n", update_counter.load());
 
 #ifdef ENABLE_NAP
-  masstree_nap.show_statistics();
+  nftree_nap.show_statistics();
 #endif
 
   for (size_t t = 0; t < thread_num; ++t) {

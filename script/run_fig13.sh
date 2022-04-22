@@ -17,7 +17,7 @@ for t in ${threads[@]}
 do  
     sleep 5
     echo "running... #thread=${t}"
-    ./nr_clht /mnt/pm0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 ${t} > output
+    ./nr_clht /mnt/pmem0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 ${t} > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done
@@ -30,7 +30,7 @@ for t in ${threads[@]}
 do  
     sleep 5
     echo "running... #thread=${t}"
-    ./nr_clht /mnt/pm0/ycsb ../dataset/load ../dataset/run-read95-zipfan99-space192 ${t} > output
+    ./nr_clht /mnt/pmem0/ycsb ../dataset/load ../dataset/run-read95-zipfan99-space192 ${t} > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done

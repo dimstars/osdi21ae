@@ -123,11 +123,11 @@ void test_bandwidth_single() {
 
 std::atomic<bool> is_test{false};
 std::atomic<int> th_barrier{0};
-double tp[48];
+double tp[64];
 void test_write_bandwidth_thread(int id, char *start) {
 
   if (is_remote) {
-    bindCore(id + 18);
+    bindCore(id + 16);
   } else {
     bindCore(id);
   }
@@ -196,10 +196,13 @@ int main(int argc, char *argv[]) {
   // gen_trace();
 
   std::thread th[64];
+  int ii = 0;
 
   for (int i = 0; i < kThread; ++i) {
+    if (i >= 16) ii = i + 16;
+    else ii = i;
     th[i] =
-        std::thread(test_write_bandwidth_thread, i, nvm_space + i * kAEPSize);
+        std::thread(test_write_bandwidth_thread, ii, nvm_space + i * kAEPSize);
   }
 
   for (int i = 0; i < kThread; ++i) {
@@ -209,8 +212,10 @@ int main(int argc, char *argv[]) {
   is_test = true;
 
   for (int i = 0; i < kThread; ++i) {
+    if (i >= 16) ii = i + 16;
+    else ii = i;
     th[i] =
-        std::thread(test_write_bandwidth_thread, i, nvm_space + i * kAEPSize);
+        std::thread(test_write_bandwidth_thread, ii, nvm_space + i * kAEPSize);
   }
 
   for (int i = 0; i < kThread; ++i) {

@@ -208,7 +208,7 @@ template <class T> void Nap<T>::init_pmdk_pool() {
 
   // init per-NUMA PMDK pool
   for (int i = 0; i < Topology::kNumaCnt; ++i) {
-    std::string pool_name = std::string("/mnt/pm") + std::to_string(i) + "/nap";
+    std::string pool_name = std::string("/mnt/pmem") + std::to_string(i) + "/nap";
     printf("nap %d pool: %s\n", i, pool_name.c_str());
 
     remove(pool_name.c_str());

@@ -28,7 +28,7 @@
 
 // #define RECOVERY_TEST
 
-#define WARMUP_FILE "/home/wq/Nap/dataset/warmup"
+#define WARMUP_FILE "/home/ljr/Nap/dataset/warmup"
 
 #include "index/cceh_NUMA.hpp"
 #include "index/clevel_hash_NUMA.hpp"
@@ -42,7 +42,7 @@
 #include "slice.h"
 
 #define LAYOUT "NAP_RAW_INDEX"
-#define KEY_LEN 15
+#define KEY_LEN 9
 #define VALUE_LEN 8
 
 #ifdef SWITCH_TEST
@@ -71,6 +71,8 @@ inline void next_thread_id_for_load(int thread_num) {
   my_thread_id = (cur % numa_cnt) * nap::Topology::kCorePerNuma;
 
 #endif
+
+  my_thread_id = cur % 2;
 }
 
 #endif // _BENCH_H_

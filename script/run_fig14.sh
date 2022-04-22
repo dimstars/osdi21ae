@@ -19,7 +19,7 @@ for size in ${hotset[@]}
 do
     sleep 5
     echo "running... #size_hot_size=${size}"
-    ./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 71 ${size} > output
+    ./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 71 ${size} > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done
@@ -35,7 +35,7 @@ for space in ${keyspace[@]}
 do
     sleep 5
     echo "running... #key_space_size=${space}"
-    ./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/sen-read50-zipfan99-space${space} 71 > output
+    ./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/sen-read50-zipfan99-space${space} 71 > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done
@@ -52,7 +52,7 @@ for zv in ${zipfan[@]}
 do
     sleep 5
     echo "running... #zipfan=${zv}"
-    ./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/sen-read50-zipfan${zv}-space192 71 > output
+    ./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/sen-read50-zipfan${zv}-space192 71 > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done
@@ -74,7 +74,7 @@ for space in ${keyspace[@]}
 do
     sleep 5
     echo "running... #key_space_size=${space}"
-    ./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/sen-read50-zipfan99-space${space} 71 > output
+    ./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/sen-read50-zipfan99-space${space} 71 > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done
@@ -91,7 +91,7 @@ for zv in ${zipfan[@]}
 do
     sleep 5
     echo "running... #zipfan=${zv}"
-    ./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/sen-read50-zipfan${zv}-space192 71 > output
+    ./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/sen-read50-zipfan${zv}-space192 71 > output
     res=`cat output | grep "reqs per second"`
     echo $res >> $file_name
 done

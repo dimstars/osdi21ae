@@ -1,9 +1,9 @@
 #!/bin/bash
 
-umount /mnt/pm0
-umount /mnt/pm1
-umount /mnt/pm2
-umount /mnt/pm3
+umount /mnt/pmem0
+umount /mnt/pmem1
+umount /mnt/pmem2
+umount /mnt/pmem3
 
 ndctl create-namespace --mode=devdax -e namespace0.0 -f
 
