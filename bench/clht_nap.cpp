@@ -321,14 +321,14 @@ int main(int argc, char *argv[]) {
   //   nap::Timer pcm_time;
   //   pcm_time.begin();
   // #ifdef PCMNUMA
-  //   system(("/home/wq/pcm/pcm-numa.x " + std::to_string(now_sleep) +
-  //           " >> /home/wq/Nap/build/pcm_out" + std::to_string(thread_num) +
+  //   system(("/home/ljr/pcm/pcm-numa.x " + std::to_string(now_sleep) +
+  //           " >> /home/ljr/Nap/build/pcm_out" + std::to_string(thread_num) +
   //           " 2>&1 &")
   //              .c_str());
   // #endif
   // #ifdef PCMM
-  //   system(("/home/wq/pcm/pcm.x " + std::to_string(now_sleep) +
-  //           " >> /home/wq/Nap/build/pcm_out_" + std::to_string(thread_num) +
+  //   system(("/home/ljr/pcm/pcm.x " + std::to_string(now_sleep) +
+  //           " >> /home/ljr/Nap/build/pcm_out_" + std::to_string(thread_num) +
   //           " 2>&1 &")
   //              .c_str());
   // #endif

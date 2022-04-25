@@ -26,7 +26,13 @@
 
 inline void bindCore(uint16_t core) {
 
-  // printf("bind to %d\n", core);
+#if 1
+  if (core % 2 == 0) core = core/2;
+  else core = core/2 + 32;
+#endif
+  if (core >=16 && core < 32) core += 16;
+  else if (core >=32 && core < 48) core -= 16;
+  printf("bind to %d\n", core);
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
   CPU_SET(core, &cpuset);
@@ -48,8 +54,8 @@ class Topology {
   static std::atomic<int> counter;
 
 public:
-  constexpr static int kNumaCnt = 4;
-  constexpr static int kCorePerNuma = 18;
+  constexpr static int kNumaCnt = 2;
+  constexpr static int kCorePerNuma = 32;
   static int threadID() {
 
     thread_local static int my_id = counter.fetch_add(1);
@@ -61,7 +67,7 @@ public:
     // id 0 is shift thread
   }
 
-  static int numaID() { return threadID() / kCorePerNuma; }
+  static int numaID() { return (threadID() / kCorePerNuma) % kNumaCnt; }
 
   static pmem::obj::pool_base *pmdk_pool() { return nap_pop_numa + numaID(); }
 

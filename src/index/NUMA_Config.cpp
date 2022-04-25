@@ -20,56 +20,40 @@ thread_local int my_thread_id = 0;
 
 void init_numa_pool()
 {
-
-  // for (int i = 0; i < 14; ++i) {
+  // for (int i = 0; i < 16; ++i)
+  // {
   //   numa_map[i] = 0;
   // }
-  //   for (int i = 14; i < 18; ++i) {
+  // for (int i = 16; i < 32; ++i)
+  // {
+  //   numa_map[i] = 0;
+  // }
+  // for (int i = 32; i < 48; ++i)
+  // {
   //   numa_map[i] = 1;
   // }
-  
-  // for (int i = 0 + 18; i < 14 + 18; ++i) {
-  //   numa_map[i] = 2;
+  // for (int i = 48; i < 64; ++i)
+  // {
+  //   numa_map[i] = 1;
   // }
-  //   for (int i = 14 + 18; i < 18 + 18; ++i) {
-  //   numa_map[i] = 3;
-  // // }
-
-  
-  // for (int i = 36; i <40; ++i) {
-  //   numa_map[i] = 4;
-  // }
-  //   for (int i = 40; i < 54; ++i) {
-  //   numa_map[i] = 5;
-  // }
-
-  // core id => numa id
-  for (int i = 0; i < 18; ++i)
+  for (int i = 0; i < 64; ++i)
   {
-    numa_map[i] = 0;
-  }
-  for (int i = 18; i < 36; ++i)
-  {
-    numa_map[i] = 1;
-  }
-  for (int i = 36; i < 54; ++i)
-  {
-    numa_map[i] = 2;
-  }
-  for (int i = 54; i < 72; ++i)
-  {
-    numa_map[i] = 3;
+    numa_map[i] = i % 2;
+    //numa_map[i] = 0;
   }
 
   for (int i = 0; i < nap::Topology::kNumaCnt; ++i)
   {
     std::string pool_name =
-        std::string("/mnt/pm") + std::to_string(i) + "/numa";
+        std::string("/mnt/pmem") + std::to_string(i) + "/numa";
+#ifdef ENABLE_NFTREE
+#else
     printf("numa %d pool: %s\n", i, pool_name.c_str());
 
     remove(pool_name.c_str());
     pop_numa[i] = pmem::obj::pool<int>::create(
         pool_name, "WQ", PMEMOBJ_MIN_POOL * 1024 * 8, S_IWUSR | S_IRUSR);
+#endif
   }
 }
 

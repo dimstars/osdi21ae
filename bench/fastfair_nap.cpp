@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
                 int off = 0;
                 tree->btree_search_range((char *)op.key, max_str,
                                          (unsigned long *)thread_local_buffer,
-                                         10, off);
+                                         100, off);
 
             // for (int i = 0; i < 10; ++i) {
             //   strncmp(buf_2 + i * KEY_LEN,
@@ -271,9 +271,15 @@ int main(int argc, char *argv[]) {
 
 #else
                 int off = 0;
+                uint64_t i = *(uint64_t*)thread_local_buffer;
                 tree->btree_search_range((char *)op.key, max_str,
                                          (unsigned long *)thread_local_buffer,
-                                         10, off);
+                                         100, off);
+                if (i != *(uint64_t*)thread_local_buffer) {
+                  THREADS[thread_id].found ++;
+                } else {
+                  THREADS[thread_id].unfound ++;
+                }
 
 
 #endif
@@ -281,11 +287,20 @@ int main(int argc, char *argv[]) {
 
 #ifdef ENABLE_NAP
                 std::string str;
-                fastfair_nap.get(nap::Slice((char *)op.key, KEY_LEN), str);
+                if (fastfair_nap.get(nap::Slice((char *)op.key, KEY_LEN), str)) {
+                  THREADS[thread_id].found ++;
+                } else {
+                  THREADS[thread_id].unfound ++;
+                }
+
 #else
                 // printf("XXX %d\n",
                 //        strlen((char *)THREADS[thread_id].run_queue[j].key));
-                tree->btree_search((char *)op.key);
+                if (tree->btree_search((char *)op.key)) {
+                  THREADS[thread_id].found ++;
+                } else {
+                  THREADS[thread_id].unfound ++;
+                }
 #endif
 
 #endif

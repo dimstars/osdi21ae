@@ -3,6 +3,7 @@ project(Nap)
 
 set(CMAKE_CXX_COMPILER "g++")
 
+option(ENABLE_NFTREE_FLAG "Enable NFTree" OFF) 
 option(ENABLE_NAP_FLAG "Enable Nap" OFF) 
 option(RANGE_BENCH_FLAG "Enable Range " OFF) 
 option(TEST_LATENCY_FLAG "Enable Lantecy Test " OFF) 
@@ -12,6 +13,10 @@ option(RECOVERY_TEST_FLAG "Enable Recovery Test " OFF)
 
 set(CMAKE_C_FLAGS "-Wall -Wsign-compare -O3 -g -DNDEBUG")
 # set(CMAKE_C_FLAGS "-Wall -march=native -Wsign-compare -O3 -g")
+
+if(ENABLE_NFTREE_FLAG)
+string(APPEND CMAKE_C_FLAGS " -DENABLE_NFTREE")
+endif(ENABLE_NFTREE_FLAG)
 
 if(ENABLE_NAP_FLAG)
 string(APPEND CMAKE_C_FLAGS " -DENABLE_NAP")
@@ -39,10 +44,10 @@ endif(RECOVERY_TEST_FLAG)
 
 
 #Compiler options
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -march=native ")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++17 -march=native -DSINGLE_BTREE -DNO_VALUE -Wall -Wno-format -Wno-unused-variable")
 
 # Link Options
-set(LINKS_FLAGS "-lpthread -lpmemobj -ltbb -ljemalloc -lprofiler")
+set(LINKS_FLAGS "-L /usr/local/lib -lpthread -lpmemobj -lpmem -ltbb -ljemalloc -lprofiler")
 
 option (SANITIZE "Turn on sanitization" OFF)
 if (SANITIZE)
@@ -54,7 +59,7 @@ set(INCLUDE_BASE ${PROJECT_SOURCE_DIR}/include)
 include_directories(${INCLUDE_BASE})
 
 #Source file define
-set(COMMON_SRC ${PROJECT_SOURCE_DIR}/src)
+set(COMMON_SRC ${PROJECT_SOURCE_DIR}/src )
 
 #Used by both server and clients
 file(GLOB_RECURSE COMMON_FILE ${COMMON_SRC}/*.cpp)
@@ -68,6 +73,12 @@ foreach (BENCHMARK ${BENCHMARK_SRC})
     add_executable(${BENCHMARK_NAME} ${BENCHMARK})
     target_link_libraries(${BENCHMARK_NAME} ${LINKS_FLAGS})
 endforeach()
+
+file(GLOB_RECURSE NFTREE_FILE ${PROJECT_SOURCE_DIR}/mysrc/*.cpp)
+set (BENCHMARK ${PROJECT_SOURCE_DIR}/mysrc/nftree_nap.cpp)
+get_filename_component(BENCHMARK_NAME ${BENCHMARK} NAME_WE)
+add_executable(${BENCHMARK_NAME} ${NFTREE_FILE})
+target_link_libraries(${BENCHMARK_NAME} ${LINKS_FLAGS})
 
 # test 
 file(GLOB TEST_SRC ${PROJECT_SOURCE_DIR}/test/*.cpp)

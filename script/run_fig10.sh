@@ -13,7 +13,7 @@ echo "start raw_index latency"
 file_name=Fig10_lat_Raw
 rm -rf latency.txt
 
-./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 71 > output
+./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 71 > output
 
 mv latency.txt ${file_name}
 
@@ -25,6 +25,6 @@ echo "start nap_index latency"
 file_name=Fig10_lat_Nap
 rm -rf latency.txt
 
-./clht_nap /mnt/pm0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 71 > output
+./clht_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/run-read50-zipfan99-space192 71 > output
 
 mv latency.txt ${file_name}

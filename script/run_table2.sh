@@ -16,7 +16,7 @@ for e in ${exe[@]}
 do  
     sleep 5
     echo "running... ${e}"
-    ./${e}_nap /mnt/pm0/ycsb ../dataset/load ../dataset/run-read95-zipfan99-space192 71 > output
+    ./${e}_nap /mnt/pmem0/ycsb ../dataset/load ../dataset/run-read95-zipfan99-space192 71 > output
     res=`cat output | grep "recovery"`
     echo "============ ${e} ============" >> $file_name
     echo $res >> $file_name

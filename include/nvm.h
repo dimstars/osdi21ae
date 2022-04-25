@@ -29,8 +29,11 @@ alloc_nvm(size_t size,
 
   assert(fd > 0);
   void *pmem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED , fd, 0);
-
-  assert(pmem != nullptr);
+  if (pmem == (void*)-1) {
+    perror("mmap");
+    exit(-1);
+  }
+  assert(pmem != (void*)(-1));
   return (char *)pmem;
 }
 

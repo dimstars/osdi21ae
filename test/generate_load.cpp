@@ -87,8 +87,13 @@ int main(int argc, char *argv[]) {
     }
     char *char_buf = (char *)buf;
     for (int j = 0; j < key_len; ++j) {
-      if (char_buf[j] == '\n') {
+      // char_buf[j] %= 10;
+      // char_buf[j] += '0';
+      // continue;
+      if (char_buf[j] == '\n' || char_buf[j] == '\r') {
         char_buf[j] = '4';
+      } else if (char_buf[j] == '\t') {
+        char_buf[j] = 't';
       } else if (char_buf[j] == '\0') {
         char_buf[j] = 'a';
       }
